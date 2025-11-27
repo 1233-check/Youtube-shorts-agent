@@ -5,10 +5,10 @@ import tempfile
 import random
 import textwrap
 import google.generativeai as genai
-from moviepy.editor import AudioFileClip, CompositeAudioClip, AudioClip
+from moviepy.editor import AudioFileClip
 from google.cloud import texttospeech
 
-# ────────────────────── 1. GEMINI + GCP AUTH (WORKS 100% ON GITHUB ACTIONS) ──────────────────────
+# ────────────────────── 1. GEMINI + GCP AUTH (FIXED FOR 404 MODEL ERROR) ──────────────────────
 def init_gemini_and_gcp():
     key_json = os.getenv("GCP_SERVICE_ACCOUNT_KEY")
     if not key_json:
@@ -21,16 +21,16 @@ def init_gemini_and_gcp():
         json.dump(json.loads(key_json), temp_file)
         temp_file.close()
 
-        # This powers Gemini, Cloud TTS, Vertex AI — everything Google
+        # This powers Gemini, Cloud TTS — everything Google
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file.name
 
         # Force use of service account (no API key fallback)
         genai.configure()
 
-        # Test connection
-        model = genai.GenerativeModel("gemini-1.5-pro-latest")
+        # Test connection with a STABLE, supported model (fixes 404 error)
+        model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content("Say 'hello' in one word.")
-        print("Gemini 1.5 Pro initialized successfully via Service Account!")
+        print("Gemini 1.5 Flash initialized successfully via Service Account!")
         print(f"Test response: {response.text.strip()}")
 
         return True
@@ -64,7 +64,7 @@ def generate_script():
     Keep it under 150 words.
     """
     try:
-        model = genai.GenerativeModel("gemini-1.5-pro-latest")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         response = model.generate_content(prompt)
         script = response.text.strip()
         print("Script generated successfully!")
