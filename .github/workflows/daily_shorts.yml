@@ -24,18 +24,18 @@ jobs:
         fetch-depth: 1
 
     - name: Setup Environment and Move Files
-      # ⚠️ FINAL PATH FIX: Copy the Main.py file from its nested location 
-      # to the root where the shell is executing the command.
+      # ⚠️ FINAL PATH FIX: Explicitly copy the files from the nested checkout folder
+      # to the root (./) where the script is expected to run.
       run: |
-        # 1. Create the nested path variable based on the error output
-        REPO_NAME="${{ github.event.repository.name }}"
-        NESTED_PATH="./${REPO_NAME}/" 
+        echo "Moving files from nested folder..."
 
-        echo "Moving files from $NESTED_PATH"
-
-        # 2. Copy the executable and requirements.txt to the root (./)
-        cp $NESTED_PATH/main.py ./
-        cp $NESTED_PATH/requirements.txt ./
+        # 1. Copy the executable and requirements.txt to the root (./)
+        # We explicitly target the nested folder created by the checkout action
+        cp Youtube-shorts-agent/main.py ./
+        cp Youtube-shorts-agent/requirements.txt ./
+        cp -r Youtube-shorts-agent/assets ./ # Copy the assets folder too
+        
+        echo "Files moved successfully."
         
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
@@ -60,5 +60,4 @@ jobs:
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
         YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REF
