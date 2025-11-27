@@ -10,7 +10,7 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # We remove all defaults to simplify execution
+    # We remove path defaults to prevent conflicts
     
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
@@ -28,7 +28,7 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install dependencies (Robust Installation Sequence)
+    - name: Install dependencies (Robust Isolation Sequence)
       run: |
         echo "Starting robust installation sequence..."
         # Install dependencies in a sequence known to prevent moviepy crashes
@@ -39,13 +39,13 @@ jobs:
         pip install -r requirements.txt
         pip install google-cloud-texttospeech
         
-    - name: Run AI Agent and Upload Short (Final Path Fix)
-      # ⚠️ FINAL FIX: Use a shell command to explicitly change directory 
+    - name: Run AI Agent and Upload Short (Path & Case Fix Applied)
+      # ⚠️ FINAL FIX: Explicitly change directory to the repository name 
       # and call the file with correct capitalization (Main.py).
       run: |
-        # Change directory to the repository name to solve the nested path issue
+        # Change directory to the repository name path to find Main.py
         cd ${{ github.event.repository.name }}
-        # Execute the script with the correct name (Main.py)
+        # Execute the script with the correct name: Main.py
         python Main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
