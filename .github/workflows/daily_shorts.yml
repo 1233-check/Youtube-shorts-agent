@@ -18,33 +18,19 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      # CRITICAL FIX: Place files directly in the simple root workspace
-      with:
-        path: ./
-        fetch-depth: 1
-
-    - name: Setup Environment and Move Files
-      # ⚠️ FINAL PATH FIX: Explicitly copy the files from the nested checkout folder
-      # to the root (./) where the script is expected to run.
-      run: |
-        echo "Moving files from nested folder..."
-
-        # 1. Copy the executable and requirements.txt to the root (./)
-        # We explicitly target the nested folder created by the checkout action
-        cp Youtube-shorts-agent/main.py ./
-        cp Youtube-shorts-agent/requirements.txt ./
-        cp -r Youtube-shorts-agent/assets ./ # Copy the assets folder too
-        
-        echo "Files moved successfully."
-        
+      # CRITICAL: We rely on the checkout creating the nested folder (Youtube-shorts-agent)
+      
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
     - name: Install dependencies (Robust Isolation Sequence)
-      # This step should now correctly find requirements.txt in the root path (due to the copy command above)
+      # ⚠️ FINAL PATH FIX: Execute commands from the nested folder where the files actually reside
       run: |
+        echo "Changing directory to ${{ github.event.repository.name }} for install..."
+        cd ${{ github.event.repository.name }}
+        
         echo "Starting robust installation sequence..."
         # Install dependencies in a sequence known to prevent moviepy crashes
         pip install numpy imageio-ffmpeg moviepy
@@ -53,11 +39,16 @@ jobs:
         pip install google-cloud-texttospeech
         
     - name: Run AI Agent and Upload Short
-      # The file is now at ./main.py and the runner can execute it.
-      run: python main.py
+      # ⚠️ FINAL PATH FIX: Execute the script from the nested folder
+      run: |
+        echo "Changing directory to ${{ github.event.repository.name }} for run..."
+        cd ${{ github.event.repository.name }}
+        # Execute the script with the correct lowercase name: main.py
+        python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
         YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REF
+        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
