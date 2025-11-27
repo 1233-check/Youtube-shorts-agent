@@ -29,21 +29,23 @@ jobs:
         python-version: '3.11'
 
     - name: Install dependencies (Robust Isolation Sequence)
+      # ⚠️ FINAL PATH FIX: Execute commands from the correct nested directory.
       run: |
-        echo "Starting robust installation sequence..."
-        # 1. Install heavy media dependencies sequentially
+        # 1. Manually navigate into the subfolder created by checkout
+        cd Youtube-shorts-agent
+        
+        echo "Starting robust installation sequence from $(pwd)..."
+        
+        # Install dependencies inside the correct folder
         pip install numpy imageio-ffmpeg moviepy
-        
-        # 2. Install core application dependencies (from requirements.txt)
         pip install -r requirements.txt
+        pip install google-cloud-texttospeech
         
-        # 3. Install Google Cloud libraries (TTS and Vertex AI for Imagen)
-        pip install google-cloud-texttospeech google-cloud-aiplatform
-        
-    - name: Run AI Agent and Upload Short
-      # ⚠️ FINAL PATH FIX: Execute the script directly from the root path
-      # where the checkout action placed the files.
-      run: python main.py
+    - name: Run AI Agent and Upload Short (Path Fix Applied)
+      # ⚠️ FINAL PATH FIX: Execute the script from the correct directory.
+      run: |
+        cd Youtube-shorts-agent
+        python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
