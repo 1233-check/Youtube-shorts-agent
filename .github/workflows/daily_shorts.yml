@@ -32,21 +32,22 @@ jobs:
       run: |
         echo "Starting robust installation sequence..."
         # Install dependencies in a sequence known to prevent moviepy crashes
-        pip install numpy
-        pip install imageio-ffmpeg
-        pip install moviepy
+        pip install numpy imageio-ffmpeg moviepy
         # Install remaining core and Google Cloud dependencies
         pip install -r requirements.txt
         pip install google-cloud-texttospeech
         
-    - name: Run AI Agent and Upload Short (Path & Case Fix Applied)
-      # ⚠️ FINAL FIX: Explicitly change directory to the repository name 
-      # and call the file with correct capitalization (Main.py).
+    - name: Run AI Agent and Upload Short (Final Path Fix Applied)
+      # ⚠️ ULTIMATE FIX: Use a multi-line shell command to manually navigate to the correct folder
+      # and execute the file with the corrected lowercase name (main.py).
       run: |
-        # Change directory to the repository name path to find Main.py
+        echo "Attempting to locate main.py..."
+        # Change directory to the repository name path to find main.py (Final Fix)
         cd ${{ github.event.repository.name }}
-        # Execute the script with the correct name: Main.py
-        python Main.py
+        # List files to debug (optional, but helpful if it fails again)
+        ls -a
+        # Execute the script with the correct lowercase name: main.py
+        python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
