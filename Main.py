@@ -18,14 +18,30 @@ SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'
 
-# --- API KEYS (Loaded from GitHub Secrets) ---
-# NOTE: GEMINI_API_KEY is used as a fallback. 
-# GCP_SA_KEY is required for premium TTS/Pro models.
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") 
+# --- API KEYS & PATHS ---
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY") 
-GCP_SA_KEY_PATH = "gcp_service_account.json" # Path to your Service Account Key file
+GCP_SA_KEY_PATH = "gcp_service_account.json" 
 
-# --- 1. SEO & SCRIPT AGENT (GEMINI 2.5 PRO) ---
+# --- 1. SERVICE ACCOUNT SETUP (CRITICAL FOR GCP SERVICES) ---
+
+def setup_gcp_credentials():
+    """Writes the Service Account JSON secret to a file for authentication."""
+    gcp_sa_json = os.environ.get("GCP_SERVICE_ACCOUNT_KEY")
+    if gcp_sa_json:
+        try:
+            # Write the JSON content to a temporary file
+            with open(GCP_SA_KEY_PATH, "w") as f:
+                f.write(gcp_sa_json)
+            # Set the environment variable that Google Cloud libraries look for
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_SA_KEY_PATH
+            print("✅ GCP Service Account credentials prepared.")
+            return True
+        except Exception as e:
+            print(f"❌ ERROR: Failed to write GCP Service Account file: {e}")
+            return False
+    return False
+
+# --- 2. SEO & SCRIPT AGENT (GEMINI 2.5 PRO) ---
 
 def generate_script_and_materials(client):
     """Uses the powerful Gemini 2.5 Pro model for script and SEO generation."""
@@ -39,7 +55,7 @@ def generate_script_and_materials(client):
     
     prompt = f"""
     You are an expert viral YouTube Shorts SEO & Script Agent using the high-end Gemini 2.5 Pro model. 
-    Your goal is maximum retention and monetization. Your output MUST be ONLY a single JSON block.
+    Your output MUST be ONLY a single JSON block. Do not add any text, comments, or markdown outside of the JSON block.
 
     **Goal:** Select ONE material category and choose a unique, highly surprising material. 
     **Material Categories:** {', '.join(MATERIAL_CATEGORIES)}
@@ -66,15 +82,14 @@ def generate_script_and_materials(client):
     }}
     """
     try:
-        # Use the powerful Gemini 2.5 Pro model
         response = client.models.generate_content(
             model='gemini-2.5-pro',
             contents=prompt
         )
         return json.loads(response.text.strip())
     except Exception as e:
-        print(f"Error generating script: {e}")
-        # FALLBACK SCRIPT (Using simplified model if Pro fails)
+        print(f"❌ ERROR generating script with Gemini 2.5 Pro: {e}")
+        # Return a robust fallback script to prevent total failure
         return {
             "material_name": "Glass Bottle",
             "keyword": "glass bottle breaking",
@@ -93,23 +108,21 @@ def generate_script_and_materials(client):
             }
         }
 
-# --- 2. PREMIUM GOOGLE CLOUD TTS (FOR HIGH RETENTION) ---
+# --- 3. PREMIUM GOOGLE CLOUD TTS ---
 
 def create_tts_audio(text, filename="temp_audio.mp3"):
     """
-    Uses Google Cloud Text-to-Speech (Wavenet) for premium, human-quality voiceover,
-    billing against the GCP credit.
+    Uses Google Cloud Text-to-Speech (Wavenet) for premium, human-quality voiceover.
+    Requires GOOGLE_APPLICATION_CREDENTIALS environment variable to be set.
     """
     try:
-        # Authentication is handled by setting the GOOGLE_APPLICATION_CREDENTIALS 
-        # environment variable using the Service Account Key file (Source 1.4, 1.5)
         client = texttospeech.TextToSpeechClient()
         synthesis_input = texttospeech.SynthesisInput(text=text)
         
-        # Use a high-quality WaveNet voice with an American English accent
+        # High-quality WaveNet voice with an American English accent
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
-            name="en-US-Wavenet-D",  # A high-quality male voice
+            name="en-US-Wavenet-D", 
             ssml_gender=texttospeech.SsmlVoiceGender.MALE
         )
         
@@ -126,23 +139,14 @@ def create_tts_audio(text, filename="temp_audio.mp3"):
         
         return AudioFileClip(filename)
         
-    except DefaultCredentialsError:
-        print("ERROR: GCP Service Account Credentials not found. Falling back to gTTS (lower quality).")
-        # FALLBACK to standard gTTS if Service Account fails
-        from gtts import gTTS
-        try:
-            tts = gTTS(text=text, lang='en', tld='us') 
-            tts.save(filename)
-            return AudioFileClip(filename)
-        except Exception as e:
-            print(f"gTTS fallback failed: {e}")
-            return None
+    except Exception as e:
+        # If TTS fails (e.g., permissions error), we use a placeholder silence or simple fallback
+        print(f"❌ ERROR: Premium TTS failed ({e}). Returning silent clip.")
+        return AudioClip(lambda t: 0, duration=1).set_fps(44100)
 
 
 def download_stock_clip(keyword, duration):
-    """
-    Loads placeholder/stock video. Corrects aspect ratio to 9:16.
-    """
+    """Loads placeholder/stock video. Corrects aspect ratio to 9:16."""
     PLACEHOLDER_PATH = "assets/placeholder.mp4" 
     if os.path.exists(PLACEHOLDER_PATH):
          clip = VideoFileClip(PLACEHOLDER_PATH).subclip(0, duration)
@@ -214,14 +218,17 @@ def assemble_video(script_data, video_clip):
     final_video = concatenate_videoclips(clips)
     if bgm_clip:
         bgm_looped = afx.audio_loop(bgm_clip, duration=final_video.duration)
-        final_video = final_video.set_audio(CompositeAudioClip([final_video.audio, bgm_looped]))
+        # Ensure CompositeAudioClip handles potential silent clips
+        final_audio_track = CompositeAudioClip([final_video.audio, bgm_looped])
+        final_video = final_video.set_audio(final_audio_track)
 
     return final_video
 
-# --- 3. YOUTUBE UPLOAD ---
+# --- 4. YOUTUBE UPLOAD ---
 
 def get_authenticated_service():
     """Authenticates non-interactively using the Refresh Token from GitHub Secrets."""
+    # Loads refresh token/secrets from environment variables (GitHub Secrets)
     creds = Credentials(
         token=None,
         refresh_token=os.environ.get("YOUTUBE_REFRESH_TOKEN"),
@@ -230,6 +237,7 @@ def get_authenticated_service():
         token_uri="https://oauth2.googleapis.com/token",
         scopes=SCOPES
     )
+    
     if creds.refresh_token:
         creds.refresh(Request())
     else:
@@ -254,9 +262,10 @@ def upload_to_youtube(video_path, script_data):
             categoryId='28' # Science & Technology
         ),
         status=dict(
-            privacyStatus='public' # Change this to 'unlisted' or 'private' for testing!
+            privacyStatus='public' # Set to 'unlisted' for safety during testing
         )
     )
+    
     media_file = MediaFileUpload(video_path, chunksize=-1, resumable=True)
     insert_request = youtube.videos().insert(
         part=",".join(body.keys()),
@@ -270,26 +279,18 @@ def upload_to_youtube(video_path, script_data):
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
     
-    # 0. Setup Service Account Key file from GitHub Secret (for GCP services)
-    # The JSON key must be stored in a GitHub Secret (e.g., GCP_SERVICE_ACCOUNT_KEY)
-    # and written to a file that the library can read for authentication.
-    gcp_sa_json = os.environ.get("GCP_SERVICE_ACCOUNT_KEY")
-    if gcp_sa_json:
-        try:
-            with open(GCP_SA_KEY_PATH, "w") as f:
-                f.write(gcp_sa_json)
-            # Set the environment variable that the Google Cloud libraries look for
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_SA_KEY_PATH
-        except Exception as e:
-            print(f"Failed to write GCP Service Account file: {e}. Proceeding with API Key fallback.")
+    # 0. Setup Service Account Key file from GitHub Secret
+    if not setup_gcp_credentials():
+        print("CRITICAL: Failed to load GCP credentials. Video generation may fail.")
 
-    # 1. Initialize Gemini Client (Uses environment variable or service account credentials)
+    # 1. Initialize Gemini Client (Uses GOOGLE_APPLICATION_CREDENTIALS)
     try:
-        # Client will try to use the GOOGLE_APPLICATION_CREDENTIALS first
+        # Client tries to use the Service Account Credentials first
         client = genai.Client()
-    except Exception:
-        # Fallback to the GEMINI_API_KEY if service account fails
-        client = genai.Client(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        print(f"❌ Failed to initialize Gemini Client using Service Account: {e}")
+        # If service account fails, the script cannot proceed with Pro model features
+        exit()
 
     # 2. Execute Script, Assemble Video, and Upload
     script_data = generate_script_and_materials(client)
