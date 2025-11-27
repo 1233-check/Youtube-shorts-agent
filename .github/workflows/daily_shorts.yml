@@ -2,33 +2,37 @@ name: Daily YouTube Shorts Generator (GCP Credit Optimized)
 
 on:
   schedule:
-    - cron: "0 10 * * *"    # Every day at 10:00 AM UTC
-  workflow_dispatch:        # Allows manual triggering
+    - cron: "0 10 * * *"
+  workflow_dispatch:
 
 jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     env:
-      IMAGEIO_FFMPEG_EXE: ffmpeg   # Helps moviepy/imageio find ffmpeg
+      IMAGEIO_FFMPEG_EXE: ffmpeg
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1              # Smaller clone, faster for scheduled runs
+          fetch-depth: 1
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Upgrade pip & Install dependencies (correct order)
         run: |
-          echo "Installing dependencies..."
-          pip install --upgrade pip
-          pip install numpy imageio-ffmpeg moviepy
+          python -m pip install --upgrade pip setuptools wheel
+          pip install moviepy==1.0.3          # moviepy MUST be installed first
+          pip install imageio-ffmpeg numpy    # its direct dependencies
           pip install -r requirements.txt
           pip install google-cloud-texttospeech
+
+      # Optional: verify moviepy is really there
+      - name: Verify moviepy installation
+        run: python -c "from moviepy.editor import *; print('moviepy imported successfully')"
 
       - name: Run AI Agent and Upload Short
         run: python main.py
