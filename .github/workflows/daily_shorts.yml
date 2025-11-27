@@ -38,7 +38,7 @@ jobs:
         
     - name: Run AI Agent and Upload Short
       # This command now executes from the workspace root where main.py is located.
-      run: python main.py
+      run: python Main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
