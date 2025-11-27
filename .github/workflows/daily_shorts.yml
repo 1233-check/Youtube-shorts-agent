@@ -10,7 +10,7 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # We remove the working-directory default to prevent path errors.
+    # We remove path defaults to prevent conflicts
     
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
@@ -31,24 +31,20 @@ jobs:
     - name: Install dependencies (Robust Isolation Sequence)
       run: |
         echo "Starting robust installation sequence..."
-        # 1. Install NumPy first (Prerequisite for many media libraries)
+        # 1. Install heavy media dependencies sequentially
         pip install numpy
-        # 2. Install ImageIO-FFmpeg (Heavy dependency)
         pip install imageio-ffmpeg
-        # 3. Install the core video editor (MoviePy)
         pip install moviepy
-        
-        # 4. Install remaining core application dependencies from file
+        # 2. Install remaining core and Google Cloud dependencies
         pip install -r requirements.txt
-        
-        # 5. Install Google Cloud libraries (TTS)
         pip install google-cloud-texttospeech
         
-        echo "Installation sequence complete."
-        
-    - name: Run AI Agent and Upload Short
-      # CRITICAL FIX: Use correct file capitalization (Main.py)
-      run: python Main.py
+    - name: Run AI Agent and Upload Short (Path Fix Applied)
+      # ⚠️ FINAL FIX: Explicitly change directory to the expected checkout location (using the repository name)
+      # This step should resolve the persistent nested path error.
+      run: |
+        cd ${{ github.event.repository.name }}
+        python Main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
