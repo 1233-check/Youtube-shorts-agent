@@ -10,19 +10,50 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
+    # We must explicitly define the working directory path to be the checked-out folder
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}/${{ github.event.repository.name }}
+        
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
       
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        path: ./
-        fetch-depth: 1
-
+      # CRITICAL FIX: The checkout will place the files into a subfolder named by the repository name
+      # We rely on this subfolder in the defaults:run:working-directory setting above.
+      
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         
-    # 🕵️‍♂️ NEW DIAG
+    # 🕵️‍♂️ FINAL DIAGNOSTIC STEP (Should now show the file path) 🕵️‍♂️
+    - name: Final Path Confirmation
+      run: |
+        echo "Listing contents of working directory:"
+        ls -a
+        echo "Searching for main.py (or Main.py)..."
+        find . -name "main.py" 
+        find . -name "Main.py" 
+      continue-on-error: true
+    # ----------------------------------------------------------------------
+        
+    - name: Install dependencies (Robust Isolation Sequence)
+      run: |
+        # This command should now run successfully from the working directory set above
+        pip install numpy imageio-ffmpeg moviepy
+        pip install -r requirements.txt
+        pip install google-cloud-texttospeech
+        
+    - name: Run AI Agent and Upload Short
+      # Execute the file with the corrected lowercase name: main.py
+      run: python main.py
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+        YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
