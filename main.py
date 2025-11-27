@@ -25,13 +25,16 @@ YOUTUBE_API_VERSION = 'v3'
 # --- API KEYS & PATHS ---
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY") 
 GCP_SA_KEY_PATH = "gcp_service_account.json" 
-# Use your actual Project ID from the Service Account email
+# CRITICAL: Use your actual Project ID from the Service Account email
 PROJECT_ID = "ai-youtube-agent-479510" 
 
-# --- 1. SERVICE ACCOUNT SETUP (Writes key file for TTS/Vertex AI) ---
+# --- 1. SERVICE ACCOUNT SETUP (Fixes NameError by defining function early) ---
 
 def setup_gcp_credentials():
-    """Writes the Service Account JSON secret to a file for authentication."""
+    """
+    Writes the Service Account JSON secret to a file for authentication.
+    This must be defined BEFORE being called in __main__.
+    """
     gcp_sa_json = os.environ.get("GCP_SERVICE_ACCOUNT_KEY")
     if gcp_sa_json:
         try:
@@ -92,6 +95,7 @@ def generate_script_and_materials(client):
             model='gemini-2.5-pro',
             contents=prompt
         )
+        # Attempt to parse the response; if it fails (e.g., empty string), we go to the fallback
         return json.loads(response.text.strip())
     except Exception as e:
         print(f"❌ ERROR generating script with Gemini 2.5 Pro: {e}")
@@ -196,8 +200,8 @@ def generate_visual_asset(keyword):
              clip = VideoFileClip(PLACEHOLDER_PATH).subclip(0, 10)
              return clip.fx(vfx.resize, newsize=(1080, 1920))
         else:
-             # If even the fallback asset is missing, fail gracefully
-             raise FileNotFoundError(f"CRITICAL: Placeholder video not found at {PLACEHO<ctrl61>LDER_PATH}. Cannot assemble video.")
+             # TYPO FIXED HERE: Placeholder video not found at correct path
+             raise FileNotFoundError(f"CRITICAL: Placeholder video not found at {PLACEHOLDER_PATH}. Cannot assemble video.")
 
 def create_text_overlay(text, duration, is_result=False, result_status="FAIL"):
     """Creates a stylized TextClip."""
