@@ -10,10 +10,11 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # Define the base working directory for all steps
+    # We set the working directory to the repository folder created by the checkout action.
+    # The runner workspace is usually: /home/runner/work/REPO_NAME/REPO_NAME
     defaults:
       run:
-        working-directory: ${{ github.workspace }}/youtube-shorts-agent
+        working-directory: ${{ github.repository }} # This should resolve to REPO_NAME/
         
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
@@ -21,8 +22,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      # Note: The checkout action often creates a nested folder based on the repo name.
-      # We account for this in the defaults:run:working-directory above.
 
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
@@ -30,7 +29,7 @@ jobs:
         python-version: '3.11'
 
     - name: Install dependencies (Includes Google Cloud TTS and YouTube APIs)
-      # This step should now find requirements.txt because of the working-directory defined above
+      # This step should now correctly find and use requirements.txt
       run: |
         pip install -r requirements.txt google-cloud-texttospeech
         
