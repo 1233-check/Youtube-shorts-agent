@@ -10,10 +10,11 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # We set the working directory to the standard checkout path, which is usually the REPO_NAME
+    # We set the working directory to the standard path created by checkout.
+    # This specifically addresses the triple-nested path issue shown in your logs.
     defaults:
       run:
-        working-directory: ${{ github.workspace }}/${{ github.event.repository.name }} 
+        working-directory: ${{ github.workspace }}/${{ github.event.repository.name }}
         
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
@@ -21,20 +22,19 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      # We no longer need to manually set the path here; the defaults handle it.
-
+      
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
     - name: Install dependencies (Includes Google Cloud TTS and YouTube APIs)
-      # This step should now correctly find requirements.txt
+      # This step should now correctly find requirements.txt from the workspace root
       run: |
         pip install -r requirements.txt google-cloud-texttospeech
         
     - name: Run AI Agent and Upload Short
-      # This step should now correctly find main.py because the working-directory is set above
+      # This step should now correctly find main.py and assets
       run: python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
