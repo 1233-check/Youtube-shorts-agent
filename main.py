@@ -6,7 +6,7 @@ from google import genai
 from google.cloud import texttospeech
 from google.cloud import aiplatform 
 from google.auth.exceptions import DefaultCredentialsError
-from PIL import Image # Pillow library for image handling (dependency for imageio)
+from PIL import Image 
 from io import BytesIO
 import base64
 
@@ -25,16 +25,13 @@ YOUTUBE_API_VERSION = 'v3'
 # --- API KEYS & PATHS ---
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY") 
 GCP_SA_KEY_PATH = "gcp_service_account.json" 
-# CRITICAL: Use your actual Project ID from the Service Account email (e.g., 'ai-youtube-agent-479510')
+# Use your actual Project ID from the Service Account email
 PROJECT_ID = "ai-youtube-agent-479510" 
 
-# --- 1. SERVICE ACCOUNT SETUP (CRITICAL FIX FOR NAMERROR) ---
+# --- 1. SERVICE ACCOUNT SETUP (Writes key file for TTS/Vertex AI) ---
 
 def setup_gcp_credentials():
-    """
-    Writes the Service Account JSON secret to a file for authentication.
-    This must be defined BEFORE being called in __main__.
-    """
+    """Writes the Service Account JSON secret to a file for authentication."""
     gcp_sa_json = os.environ.get("GCP_SERVICE_ACCOUNT_KEY")
     if gcp_sa_json:
         try:
@@ -200,7 +197,7 @@ def generate_visual_asset(keyword):
              return clip.fx(vfx.resize, newsize=(1080, 1920))
         else:
              # If even the fallback asset is missing, fail gracefully
-             raise FileNotFoundError(f"CRITICAL: Placeholder video not found at {PLACEHOLDER_PATH}. Cannot assemble video.")
+             raise FileNotFoundError(f"CRITICAL: Placeholder video not found at {PLACEHO<ctrl61>LDER_PATH}. Cannot assemble video.")
 
 def create_text_overlay(text, duration, is_result=False, result_status="FAIL"):
     """Creates a stylized TextClip."""
@@ -279,40 +276,96 @@ def assemble_video(script_data, visual_clip):
     return final_video
 
 # --- 5. YOUTUBE UPLOAD (Remains the same) ---
-# ... get_authenticated_service and upload_to_youtube remain the same ...
+
+def get_authenticated_service():
+    """Authenticates non-interactively using the Refresh Token from GitHub Secrets."""
+    creds = Credentials(
+        token=None,
+        refresh_token=os.environ.get("YOUTUBE_REFRESH_TOKEN"),
+        client_id=os.environ.get("YOUTUBE_CLIENT_ID"),
+        client_secret=os.environ.get("YOUTUBE_CLIENT_SECRET"),
+        token_uri="https://oauth2.googleapis.com/token",
+        scopes=SCOPES
+    )
+    
+    if creds.refresh_token:
+        creds.refresh(Request())
+    else:
+        raise ValueError("YOUTUBE_REFRESH_TOKEN is missing or invalid.")
+    return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=creds)
+
+def upload_to_youtube(video_path, script_data):
+    """Uploads the video using the SEO metadata."""
+    
+    try:
+        youtube = get_authenticated_service()
+    except Exception as e:
+        print(f"❌ AUTHENTICATION FAILED. Cannot upload: {e}")
+        return
+
+    seo_data = script_data['seo_metadata']
+    body = dict(
+        snippet=dict(
+            title=seo_data['title'],
+            description=seo_data['description'],
+            tags=[tag.strip() for tag in seo_data['tags'].split(',')],
+            categoryId='28' # Science & Technology
+        ),
+        status=dict(
+            privacyStatus='public' # Set to 'unlisted' for safety during testing
+        )
+    )
+    
+    media_file = MediaFileUpload(video_path, chunksize=-1, resumable=True)
+    insert_request = youtube.videos().insert(
+        part=",".join(body.keys()),
+        body=body,
+        media_body=media_file
+    )
+    response = insert_request.execute()
+    print(f"✅ Upload successful! Video ID: {response['id']}")
 
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
     
-    # 0. Setup Service Account Key
-    if not setup_gcp_credentials():
-        print("CRITICAL: Failed to load GCP credentials. Video generation will likely fail.")
-        exit()
-
-    # 1. Initialize Gemini Client
+    # 0. Setup Service Account Key (CRITICAL: Must be run first)
+    setup_successful = setup_gcp_credentials()
+    
+    # 1. Initialize Gemini Client (Uses the simpler API Key for stability)
     try:
-        # Client tries to use the Service Account Credentials first
-        client = genai.Client()
+        api_key_from_secret = os.environ.get("GEMINI_API_KEY")
+        if not api_key_from_secret:
+            raise ValueError("GEMINI_API_KEY secret is missing.")
+            
+        client = genai.Client(api_key=api_key_from_secret)
+        print("✅ Gemini Client initialized using API Key.")
+        
     except Exception as e:
-        print(f"❌ Failed to initialize Gemini Client using Service Account: {e}")
+        print(f"❌ Failed to initialize Gemini Client: {e}")
+        print("Please ensure your GEMINI_API_KEY secret is correct.")
         exit()
 
-    # 2. Execute Script
+    # 2. Verify GCP readiness for premium services
+    if not setup_successful:
+        print("CRITICAL: Failed to load GCP Service Account credentials. Cannot use premium TTS/Vertex AI.")
+        exit()
+
+    # 3. Execute Script
     script_data = generate_script_and_materials(client)
     print(f"✅ Script Generated for Material: {script_data['material_name']}")
     
-    # 3. Generate NEW VISUAL ASSET
+    # 4. Generate NEW VISUAL ASSET
     try:
         visual_clip = generate_visual_asset(script_data['keyword'])
     except FileNotFoundError as e:
         print(f"❌ {e}")
         exit()
 
-    # 4. Assemble Video 
+    # 5. Assemble Video 
     final_video_clip = assemble_video(script_data, visual_clip)
     
-    # 5. Render and Save the File
+    # 6. Render and Save the File
     OUTPUT_FILE = f"output/{script_data['material_name'].replace(' ', '_').lower()}_short.mp4"
     if not os.path.exists('output'):
         os.makedirs('output')
@@ -325,6 +378,6 @@ if __name__ == "__main__":
     )
     print("✅ Video Render Complete.")
 
-    # 6. Upload to YouTube
+    # 7. Upload to YouTube
     upload_to_youtube(OUTPUT_FILE, script_data)
     print("--- Daily AI Agent Run Finished ---")
