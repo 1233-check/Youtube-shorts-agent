@@ -10,11 +10,10 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # Define the base working directory for all subsequent steps.
-    # This should be the root of the checked-out repository.
+    # We set the working directory to the standard checkout path, which is usually the REPO_NAME
     defaults:
       run:
-        working-directory: ${{ github.workspace }}
+        working-directory: ${{ github.workspace }}/${{ github.event.repository.name }} 
         
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
@@ -22,9 +21,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      # Ensure files are checked out directly into the workspace root
-      with:
-        path: ${{ github.workspace }}
+      # We no longer need to manually set the path here; the defaults handle it.
 
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
@@ -32,12 +29,12 @@ jobs:
         python-version: '3.11'
 
     - name: Install dependencies (Includes Google Cloud TTS and YouTube APIs)
-      # Since working-directory is ${{ github.workspace }}, this command looks in the root
+      # This step should now correctly find requirements.txt
       run: |
         pip install -r requirements.txt google-cloud-texttospeech
         
     - name: Run AI Agent and Upload Short
-      # This step should now correctly find main.py and other assets
+      # This step should now correctly find main.py because the working-directory is set above
       run: python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
