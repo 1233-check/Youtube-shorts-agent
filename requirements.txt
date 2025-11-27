@@ -1,7 +1,9 @@
+# Core Libraries
 google-genai
 moviepy
-gTTS
 requests
+
+# Google API Client Libraries (Required for YouTube Upload)
 google-api-python-client
 google-auth
 google-auth-oauthlib
