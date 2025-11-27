@@ -10,11 +10,10 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # We set the working directory to the standard path created by checkout.
-    # This specifically addresses the triple-nested path issue shown in your logs.
+    # Define the base working directory for all subsequent steps: the workspace root
     defaults:
       run:
-        working-directory: ${{ github.workspace }}/${{ github.event.repository.name }}
+        working-directory: ${{ github.workspace }}
         
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
@@ -22,7 +21,11 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+      # CRITICAL FIX: Force the checkout to place files in the root (depth: 1)
+      with:
+        path: ${{ github.workspace }}
+        fetch-depth: 1
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
