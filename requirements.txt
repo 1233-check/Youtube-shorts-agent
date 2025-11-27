@@ -2,8 +2,14 @@
 google-genai
 requests
 
+# Video Processing (Still necessary for assembly)
+moviepy 
+
 # Google API Client Libraries (Required for YouTube Upload)
 google-api-python-client
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
+
+# NEW: For Generative Image/Visuals
+google-cloud-aiplatform
