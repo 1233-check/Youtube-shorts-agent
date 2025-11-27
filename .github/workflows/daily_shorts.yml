@@ -2,44 +2,48 @@ name: Daily YouTube Shorts Generator (GCP Credit Optimized)
 
 on:
   schedule:
-    - cron: "0 10 * * *"
+    # Runs every day at 10:00 AM UTC
+    - cron: '0 10 * * *'
   workflow_dispatch:
 
 jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
+    
+    # We remove path defaults to prevent conflicts
+    
     env:
-      IMAGEIO_FFMPEG_EXE: ffmpeg
-
+      # CRITICAL FIX: Set the path directly to the expected FFmpeg executable location
+      IMAGEIO_FFMPEG_EXE: /usr/bin/ffmpeg 
+      
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        path: ./
+        fetch-depth: 1
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
-      - name: Upgrade pip & Install dependencies (correct order)
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install moviepy==1.0.3          # moviepy MUST be installed first
-          pip install imageio-ffmpeg numpy    # its direct dependencies
-          pip install -r requirements.txt
-          pip install google-cloud-texttospeech
-
-      # Optional: verify moviepy is really there
-      - name: Verify moviepy installation
-        run: python -c "from moviepy.editor import *; print('moviepy imported successfully')"
-
-      - name: Run AI Agent and Upload Short
-        run: python main.py
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+    - name: Install dependencies (Robust Isolation Sequence)
+      run: |
+        echo "Starting robust installation sequence..."
+        # 1. Install heavy dependencies (NumPy, ImageIO, MoviePy)
+        pip install numpy imageio-ffmpeg moviepy Pillow
+        # 2. Install remaining core and Google Cloud dependencies
+        pip install -r requirements.txt
+        pip install google-cloud-texttospeech google-cloud-aiplatform
+        
+    - name: Run AI Agent and Upload Short
+      # Execute the script directly from the root path.
+      run: python main.py
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+        YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
