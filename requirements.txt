@@ -1,6 +1,5 @@
 # Core Libraries
 google-genai
-moviepy
 requests
 
 # Google API Client Libraries (Required for YouTube Upload)
