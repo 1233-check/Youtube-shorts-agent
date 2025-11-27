@@ -10,45 +10,19 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # We remove path defaults to prevent conflicts
-    
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
       
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      # CRITICAL: We rely on the checkout creating the nested folder (Youtube-shorts-agent)
-      
+      with:
+        path: ./
+        fetch-depth: 1
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-
-    - name: Install dependencies (Robust Isolation Sequence)
-      # ⚠️ FINAL PATH FIX: Execute commands from the nested folder where the files actually reside
-      run: |
-        echo "Changing directory to ${{ github.event.repository.name }} for install..."
-        cd ${{ github.event.repository.name }}
         
-        echo "Starting robust installation sequence..."
-        # Install dependencies in a sequence known to prevent moviepy crashes
-        pip install numpy imageio-ffmpeg moviepy
-        # Install remaining core and Google Cloud dependencies
-        pip install -r requirements.txt
-        pip install google-cloud-texttospeech
-        
-    - name: Run AI Agent and Upload Short
-      # ⚠️ FINAL PATH FIX: Execute the script from the nested folder
-      run: |
-        echo "Changing directory to ${{ github.event.repository.name }} for run..."
-        cd ${{ github.event.repository.name }}
-        # Execute the script with the correct lowercase name: main.py
-        python main.py
-      env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-        YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-        YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+    # 🕵️‍♂️ NEW DIAG
