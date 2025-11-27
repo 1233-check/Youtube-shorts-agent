@@ -23,4 +23,31 @@ jobs:
         path: ./
         fetch-depth: 1
 
-    - name: Set up Python
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies (Robust Isolation Sequence)
+      run: |
+        echo "Starting robust installation sequence..."
+        # 1. Install heavy media dependencies sequentially
+        pip install numpy imageio-ffmpeg moviepy
+        
+        # 2. Install core application dependencies (from requirements.txt)
+        pip install -r requirements.txt
+        
+        # 3. Install Google Cloud libraries (TTS and Vertex AI for Imagen)
+        pip install google-cloud-texttospeech google-cloud-aiplatform
+        
+    - name: Run AI Agent and Upload Short
+      # ⚠️ FINAL PATH FIX: Execute the script directly from the root path
+      # where the checkout action placed the files.
+      run: python main.py
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+        YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
