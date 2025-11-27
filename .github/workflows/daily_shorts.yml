@@ -32,9 +32,12 @@ jobs:
         python-version: '3.11'
 
     - name: Install dependencies (Includes Google Cloud TTS and YouTube APIs)
-      # This step should now correctly find requirements.txt in the root path.
+      # --- FIX: Simplify the installation command to prevent conflicts ---
       run: |
-        pip install -r requirements.txt google-cloud-texttospeech
+        # 1. Install core requirements (MoviePy, etc.)
+        pip install -r requirements.txt
+        # 2. Install the necessary Google Cloud library separately
+        pip install google-cloud-texttospeech
         
     - name: Run AI Agent and Upload Short
       # This command now executes from the workspace root where main.py is located.
