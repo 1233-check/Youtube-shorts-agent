@@ -1,8 +1,7 @@
-name: Daily YouTube Short Generator
+name: Daily YouTube Short Generator (GCP Credit Optimized)
 
 on:
   schedule:
-    # Runs every day at 10:00 AM UTC (adjust this time if needed)
     - cron: '0 10 * * *'
   workflow_dispatch:
 
@@ -10,7 +9,6 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # Set environment variables for moviepy to use
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
       
@@ -23,11 +21,13 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
-
+    - name: Install dependencies (Includes Google Cloud TTS and YouTube APIs)
+      run: |
+        # Install core dependencies from requirements.txt AND Google Cloud TTS library
+        pip install -r requirements.txt google-cloud-texttospeech
+        
     - name: Run AI Agent and Upload Short
-      # The script loads secrets from the environment variables below
+      # The Service Account Key (JSON) is passed as a SECRET and written to a file
       run: python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -35,3 +35,5 @@ jobs:
         YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
         YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
         YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        # Pass the entire JSON Service Account Key as a single secret string
+        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
