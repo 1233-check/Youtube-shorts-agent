@@ -10,10 +10,10 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # Set the default working directory for the entire job to the repository root
+    # Define the base working directory for all steps
     defaults:
       run:
-        working-directory: ${{ github.workspace }}
+        working-directory: ${{ github.workspace }}/youtube-shorts-agent
         
     env:
       IMAGEIO_FFMPEG_EXE: ffmpeg 
@@ -21,6 +21,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      # Note: The checkout action often creates a nested folder based on the repo name.
+      # We account for this in the defaults:run:working-directory above.
 
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
@@ -28,11 +30,12 @@ jobs:
         python-version: '3.11'
 
     - name: Install dependencies (Includes Google Cloud TTS and YouTube APIs)
+      # This step should now find requirements.txt because of the working-directory defined above
       run: |
         pip install -r requirements.txt google-cloud-texttospeech
         
     - name: Run AI Agent and Upload Short
-      # This step now runs explicitly from the repository root (defined in defaults)
+      # The script now runs from the correct root directory
       run: python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
