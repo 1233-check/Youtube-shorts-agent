@@ -23,12 +23,27 @@ jobs:
         path: ./
         fetch-depth: 1
 
+    - name: Setup Environment and Move Files
+      # ⚠️ FINAL PATH FIX: Copy the Main.py file from its nested location 
+      # to the root where the shell is executing the command.
+      run: |
+        # 1. Create the nested path variable based on the error output
+        REPO_NAME="${{ github.event.repository.name }}"
+        NESTED_PATH="./${REPO_NAME}/" 
+
+        echo "Moving files from $NESTED_PATH"
+
+        # 2. Copy the executable and requirements.txt to the root (./)
+        cp $NESTED_PATH/main.py ./
+        cp $NESTED_PATH/requirements.txt ./
+        
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
     - name: Install dependencies (Robust Isolation Sequence)
+      # This step should now correctly find requirements.txt in the root path (due to the copy command above)
       run: |
         echo "Starting robust installation sequence..."
         # Install dependencies in a sequence known to prevent moviepy crashes
@@ -37,17 +52,9 @@ jobs:
         pip install -r requirements.txt
         pip install google-cloud-texttospeech
         
-    - name: Run AI Agent and Upload Short (Final Path Fix Applied)
-      # ⚠️ ULTIMATE FIX: Use a multi-line shell command to manually navigate to the correct folder
-      # and execute the file with the corrected lowercase name (main.py).
-      run: |
-        echo "Attempting to locate main.py..."
-        # Change directory to the repository name path to find main.py (Final Fix)
-        cd ${{ github.event.repository.name }}
-        # List files to debug (optional, but helpful if it fails again)
-        ls -a
-        # Execute the script with the correct lowercase name: main.py
-        python main.py
+    - name: Run AI Agent and Upload Short
+      # The file is now at ./main.py and the runner can execute it.
+      run: python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
