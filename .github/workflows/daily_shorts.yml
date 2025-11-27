@@ -10,7 +10,8 @@ jobs:
   build_and_publish_short:
     runs-on: ubuntu-latest
     
-    # We set the working directory to the simplest path: the root of the workspace.
+    # Define the base working directory for all subsequent steps.
+    # This should be the root of the checked-out repository.
     defaults:
       run:
         working-directory: ${{ github.workspace }}
@@ -21,9 +22,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      # Ensure the checkout action checks out into the root directory
+      # Ensure files are checked out directly into the workspace root
       with:
-        path: ${{ github.workspace }} # Force checkout to the base workspace path
+        path: ${{ github.workspace }}
 
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
@@ -31,12 +32,12 @@ jobs:
         python-version: '3.11'
 
     - name: Install dependencies (Includes Google Cloud TTS and YouTube APIs)
-      # This step should now correctly find and use requirements.txt from the workspace root
+      # Since working-directory is ${{ github.workspace }}, this command looks in the root
       run: |
         pip install -r requirements.txt google-cloud-texttospeech
         
     - name: Run AI Agent and Upload Short
-      # The script now runs from the correct root directory
+      # This step should now correctly find main.py and other assets
       run: python main.py
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
